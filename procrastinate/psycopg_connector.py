@@ -263,6 +263,7 @@ class PsycopgConnector(connector.BaseAsyncConnector):
         while True:
             try:
                 async with self._get_standalone_connection() as connection:
+                    logger.info("listen/notify: Connecting to database")
                     for channel_name in channels:
                         await connection.execute(
                             query=self._make_dynamic_query(
@@ -270,11 +271,13 @@ class PsycopgConnector(connector.BaseAsyncConnector):
                                 channel_name=channel_name,
                             ),
                         )
+                    logger.info("listen/notify: Listening to notifications")
                     await self._loop_notify(
                         on_notification=on_notification, connection=connection
                     )
             except psycopg.OperationalError:
                 # Connection failed, we need to reconnect
+                logger.info(f"listen/notify: Error detected, reconnecting in {reconnect_interval} seconds...")
                 await asyncio.sleep(reconnect_interval)
                 continue
 
@@ -301,4 +304,5 @@ class PsycopgConnector(connector.BaseAsyncConnector):
                 await connection.execute("SELECT 1")
             except psycopg.OperationalError:
                 # Connection is dead, we need to reconnect
+                logger.info(f"listen/notify loop: Error detected. Break.")
                 break
